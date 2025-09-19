@@ -1,6 +1,5 @@
 import logging
 from collections import deque
-from telegram.error import TimedOut, NetworkError
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
@@ -12,7 +11,8 @@ from telegram.ext import (
 )
 
 # --- Config ---
-BOT_TOKEN = "7995697835:AAHCYXhis8B7LzuFODcB6IvRNs51idEjWM4"
+BOT_TOKEN = "7995697835:AAHCYXhis8B7LzuFODcB6IvRNs51idEjWM4"  # <-- ensure this token is your bot token
+
 waiting = deque()
 partners = {}
 last_partner = {}
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("💬 Chat", callback_data="chat"),
-         InlineKeyboardButton("❌ Leave", callback_data="leave")],
+         InlineKeyboardButton("❌ Leave Chat", callback_data="leave")],
         [InlineKeyboardButton("⚠ Report", callback_data="report")],
         [InlineKeyboardButton("⚙ Settings", callback_data="settings"),
          InlineKeyboardButton("💎 Premium", callback_data="premium")]
@@ -91,35 +91,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "premium":
         await query.edit_message_text("💎 Premium coming soon!")
 
-        
-
-async def error_handler(update, context):
-    try:
-        raise context.error
-    except TimedOut:
-        print("⏳ Timeout error – network slow hai, retry ho raha hai...")
-    except NetworkError:
-        print("⚠ Network error – check your internet.")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-
-
-
-
 # --- Main ---
 def main():
-    application = Application.builder().token(BOT_TOKEN).connect_timeout(30).read_timeout(30).build()
+    app = Application.builder().token(BOT_TOKEN).build()
 
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("chat", chat))
-    application.add_handler(CommandHandler("exit", exit_chat))
-    application.add_handler(CallbackQueryHandler(button_handler))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_messages))
-    application.add_error_handler(error_handler)
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("chat", chat))
+    app.add_handler(CommandHandler("exit", exit_chat))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_messages))
 
     print("🤖 Bot started polling...")
-    application.run_polling()
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
