@@ -99,7 +99,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("⚙ Settings (Coming soon).")
     elif query.data == "premium":
         await query.edit_message_text("💎 Premium coming soon!")
- async def start_health_server():
+async def start_health_server():
     server = HTTPServer(('0.0.0.0', 10000), HealthCheckHandler)
     server.serve_forever()
 
@@ -119,5 +119,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
