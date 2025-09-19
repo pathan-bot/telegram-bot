@@ -1,3 +1,11 @@
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
 import logging
 from collections import deque
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -90,6 +98,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("⚙ Settings (Coming soon).")
     elif query.data == "premium":
         await query.edit_message_text("💎 Premium coming soon!")
+ async def start_health_server():
+    server = HTTPServer(('0.0.0.0', 10000), HealthCheckHandler)
+    server.serve_forever()
 
 # --- Main ---
 def main():
@@ -100,9 +111,11 @@ def main():
     app.add_handler(CommandHandler("exit", exit_chat))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_messages))
+    threading.Thread(target=start_health_server, daemon=True).start()
 
     print("🤖 Bot started polling...")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
+
