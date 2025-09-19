@@ -1,11 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
+
 import logging
 from collections import deque
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -17,6 +13,11 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters
 )
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
 
 # --- Config ---
 BOT_TOKEN = "7995697835:AAHCYXhis8B7LzuFODcB6IvRNs51idEjWM4"  # <-- ensure this token is your bot token
@@ -118,4 +119,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
