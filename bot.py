@@ -18,7 +18,7 @@ from telegram.ext import (
 )
 
 # ---------------- Config & env ----------------
-BOT_TOKEN = os.environ.get("BOT_TOKEN")  "7995697835:AAHCYXhis8B7LzuFODcB6IvRNs51idEjWM4"
+BOT_TOKEN = os.environ.get("BOT_TOKEN") or "7995697835:AAHCYXhis8B7LzuFODcB6IvRNs51idEjWM4"
 PAYMENT_URL = os.environ.get("PAYMENT_URL", "https://example.com/payment")  # placeholder
 DB_FILE = os.environ.get("BOT_DB", "bot_data.db")
 HEALTH_PORT = int(os.environ.get("PORT", os.environ.get("HEALTH_PORT", 10000)))
@@ -455,5 +455,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
