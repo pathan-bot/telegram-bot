@@ -18,14 +18,22 @@ from telegram.ext import (
 )
 
 # ---------------- Config & env ----------------
+# IMPORTANT: set BOT_TOKEN and APP_URL as environment variables in your hosting service.
+# BOT_TOKEN = Telegram bot token (do NOT hardcode in production)
+# APP_URL = https://your-deploy-domain (must be https)
 BOT_TOKEN = os.environ.get("BOT_TOKEN") or "7995697835:AAHCYXhis8B7LzuFODcB6IvRNs51idEjWM4"
 PAYMENT_URL = os.environ.get("PAYMENT_URL", "https://example.com/payment")  # placeholder
 DB_FILE = os.environ.get("BOT_DB", "bot_data.db")
-HEALTH_PORT = int(os.environ.get("PORT", os.environ.get("HEALTH_PORT", 10000)))
+# Host will usually expose PORT; default to 8080 for local testing
+HEALTH_PORT = int(os.environ.get("PORT", os.environ.get("HEALTH_PORT", 8080)))
+# Webhook path will be /<BOT_TOKEN> by design (keeps it private)
+WEBHOOK_PATH = "/" + BOT_TOKEN
+APP_URL = os.environ.get("APP_URL")  # e.g. https://your-app.onrender.com
 
 # ---------------- Health check ----------------
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        # Basic health endpoint
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"OK")
@@ -261,6 +269,7 @@ async def forward_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sent = await context.bot.send_photo(chat_id=partner, photo=file_id, caption=update.message.caption)
             db_add_forward(user, partner, update.message.message_id, sent.message_id, "photo")
         elif update.message.sticker:
+            # using Sticker.ALL in filters, but retrieve sticker file id here
             sent = await context.bot.send_sticker(chat_id=partner, sticker=update.message.sticker.file_id)
             db_add_forward(user, partner, update.message.message_id, sent.message_id, "sticker")
         else:
@@ -418,11 +427,14 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- Main ----------------
 def main():
+    # initialize DB
     init_db()
-    # start health server
+
+    # start health server on separate thread (useful for some hosts / uptime checks)
     threading.Thread(target=start_health_server, daemon=True).start()
 
-    # Build application with reasonable timeouts (request_kwargs)
+    # Build application
+    # Important: Application requires BOT_TOKEN to be set via environment variable for security
     app = Application.builder().token(BOT_TOKEN).build()
 
     # Command handlers (commands + utility)
@@ -445,16 +457,31 @@ def main():
     # Forward content handlers
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_messages))
     app.add_handler(MessageHandler(filters.PHOTO, forward_messages))
+    # Sticker filter updated to v20 style
     app.add_handler(MessageHandler(filters.Sticker.ALL, forward_messages))
 
     # Error handler
     app.add_error_handler(error_handler)
 
-    print("🤖 Bot started polling...")
-    app.run_polling()
+    # --- WEBHOOK setup ---
+    # We will use run_webhook to accept incoming Telegram updates via POST at path = BOT_TOKEN
+    # This requires APP_URL environment variable to be set to the public URL where this app is hosted (https).
+    if not APP_URL or "PUT-YOUR-TOKEN-HERE" in BOT_TOKEN:
+        # safety check: if APP_URL missing or BOT_TOKEN not configured, stop and print helpful message
+        logger.error("APP_URL or BOT_TOKEN not set correctly. APP_URL=%s BOT_TOKEN_set=%s", APP_URL, "PUT" not in BOT_TOKEN)
+        print("ERROR: APP_URL and BOT_TOKEN environment variables must be set before running webhook mode.")
+        print("Set APP_URL=https://your-deploy-domain (must be HTTPS) and BOT_TOKEN=your_token")
+        return
+
+    # run webhook: listen on 0.0.0.0:HEALTH_PORT, url_path is BOT_TOKEN string, Telegram should call APP_URL/BOT_TOKEN
+    logger.info("Starting webhook with url: %s%s", APP_URL, WEBHOOK_PATH)
+    print("🤖 Bot starting webhook...")
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=HEALTH_PORT,
+        url_path=BOT_TOKEN,                     # Telegram will POST updates to /<BOT_TOKEN>
+        webhook_url=f"{APP_URL}/{BOT_TOKEN}"   # setWebhook target
+    )
 
 if __name__ == "__main__":
     main()
-
-
-
